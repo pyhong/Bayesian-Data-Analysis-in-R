@@ -1,3 +1,10 @@
+/*
+ * sexp_macros.h - helper macros for SEXPs
+ *
+ * Collection of useful macros to handle S expressions. Most of these
+ * are used to unpack arguments passed in via the .Call() or
+ * .External() interface.
+ */
 #if !defined(__SEXP_MACROS_H__)
 #define __SEXP_MACROS_H__
 
