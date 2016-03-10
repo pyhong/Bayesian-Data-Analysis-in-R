@@ -416,7 +416,7 @@ void ACE_transform_cpp()
   RcppGSL::matrix<double> SigmaAA(2,2);
   RcppGSL::matrix<double> Sigma_Emat(2, 2);
   RcppGSL::matrix<double> InvADSigma_A(2, 2);  
-  RcppGSL::vector<double> unit_e(2);
+
  
   
   int kk = 25;  // the number of basis
@@ -428,7 +428,7 @@ void ACE_transform_cpp()
   
   RcppGSL::matrix<double> N(kk, kk-2);
   RcppGSL::matrix<double> M(kk, kk);
-  
+  RcppGSL::vector<double> unit_e(kk); 
 //   RcppGSL::matrix<double> Bk(2*kk, n);
 //   RcppGSL::matrix<double> bk(2*kk, n);
 
@@ -490,6 +490,14 @@ void ACE_transform_cpp()
   double lower, upper;
   RcppGSL::matrix<double> lo_up(2, kk);
   RcppGSL::vector<double> lo_up_col(kk); 
+  
+  //我真是服了师兄r-code里面的各种神参数神变量名了……
+  
+  RcppGSL::matrix<double> w1(kk, 10);
+  RcppGSL::vector<double> tmp_Unit_e(kk);
+  RcppGSL::vector<double> Gam_col(kk);
+  RcppGSL::vector<double> Bk__ij(kk);
+  //RcppGSL::vector<double> Bk__ij()
   
     
   for(int i = 0; i < n1; ++i)
@@ -664,6 +672,40 @@ void ACE_transform_cpp()
           gsl_matrix_get_col(lo_up_col, lo_up, 1);
           upper = gsl_vector_min(lo_up_col);
           
+          Rcpp::NumericVector r1 = do_rtruncnorm(10, lower, upper, 0.0, sigma_r[j]);
+          
+          for(int ww = 0; w < 10; ++w)
+          {
+              gsl_vector_memcpy(tmp_Unit_e, unit_e);
+              gsl_vector_scale(r1[ww], tmp_Unit_e);
+              gsl_matrix_get_col(Gam_col, Gam, j);
+              gsl_vector_add(Gam_col, tmp_Unit_e;
+              gsl_matrix_set_col(w1, ww, Gam_col);
+              for(int i = 0; i < n; ++i)
+              {
+                 gsl_matrix_get_col(Bk__ij ,Bk[j], i);
+                 double f1, f2, f3;
+                 gsl_blas_ddot(Gam_col, Bk__ij, f2);
+                 f2 -= double(Ua(i, j))- double(Uc(i, j));
+                 f2 *= f2;
+                 gsl_matrix_get_col(Bk__ij, bk[j], i);
+                 gsl_blas_ddot(Gam_col, Bk__ij, f3);
+                                 
+              }
+
+          }
+          
+        //   for(int ff = 0; ff < 10; ++f)
+        //   {
+        //       double f1 = 0;
+        //       for(int i = 0; i < n; ++i)
+        //       {
+        //           double f2;
+        //           gsl_matrix_get
+        //           gsl_blas_ddot()
+        //           f1 = f1 -
+        //       }
+        //   }
           
           
       }
