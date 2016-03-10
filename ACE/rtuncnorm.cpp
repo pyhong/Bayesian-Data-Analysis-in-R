@@ -1,19 +1,16 @@
-/*
- * sexp_macros.h - helper macros for SEXPs
- *
- * Collection of useful macros to handle S expressions. Most of these
- * are used to unpack arguments passed in via the .Call() or
- * .External() interface.
- *
- * Author:
- *   Olaf Mersmann (OME) <olafm@statistik.tu-dortmund.de>
- */
-
 #if !defined(__SEXP_MACROS_H__)
 #define __SEXP_MACROS_H__
 
 #include <R.h>
+#include <Rcpp.h>
+#include <Rdefines.h>
+#include <Rmath.h>
 #include <Rinternals.h>
+#include <R_ext/Applic.h>
+#include <float.h>
+#include <R_ext/Lapack.h>
+#include <R_ext/BLAS.h>
+
 
 #define CHECK_ARG_IS_REAL_MATRIX(A)					\
 if (!isReal(A) || !isMatrix(A))					    \
@@ -67,16 +64,6 @@ CHECK_ARG_IS_INT_VECTOR(S);			\
 int I = INTEGER(S)[0];			     \
 
 #endif
-#include <R.h>
-#include <Rcpp.h>
-#include <Rdefines.h>
-#include <Rmath.h>
-#include <Rinternals.h>
-#include <R_ext/Applic.h>
-#include <float.h>
-
-
-
 #define ALLOC_REAL_VECTOR(S, D, N)		         \
 SEXP S;					                                 \
 PROTECT(S = allocVector(REALSXP, N));	       \
@@ -86,13 +73,7 @@ double *D = REAL(S);
 #define MAX(A, B) ((A>B)?(A):(B))
 #endif
 
-#include <R.h>
-#include <Rdefines.h>
-#include <Rmath.h>
-#include <Rinternals.h>
-#include <R_ext/Lapack.h>
-#include <R_ext/BLAS.h>
-#include <R_ext/Applic.h>
+
 
 #ifdef DEBUG
 #define SAMPLER_DEBUG(N, A, B) Rprintf("%8s(%f, %f)\n", N, A, B)
