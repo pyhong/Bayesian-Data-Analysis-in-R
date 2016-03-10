@@ -366,6 +366,29 @@ void GInverse(RcppGSL::matrix<double> A)
   inverse.free();
 }
 
+double txAy(const gsl_vector * x, const gsl_matrix *A, const gsl_matrix *y)
+{
+    RcppGSL::vector<double> a(x);
+    RcppGSL::vector<double> c(y);
+    RcppGSL::matrix<double> b(A);
+    RcppGSL::matrix<double> tmp1(1,a.size());
+    RcppGSL::matrix<double> tmp2(1,c.size());
+    RcppGSL::matrix<double> tmp3(c.size(),1);
+    RcppGSL::matrix<double> tmp4(1,1);
+    gsl_matrix_set_row(tmp1, 0, a);
+    gsl_matrix_set_col(tmp3, 0, c);
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, tmp1, b, 0, tmp2);
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1, tmp2, tmp3, 0, tmp4);
+    double result = gsl_matrix_get(tmp4, 0, 0);
+    a.free();
+    c.free();
+    b.free();
+    tmp1.free();
+    tmp2.free();
+    tmp3.free();
+    tmp4.free();
+}
+
 //  [[Rcpp::export]]
 void ACE_transform_cpp()
 {
@@ -460,7 +483,7 @@ void ACE_transform_cpp()
   RcppGSL::vector<double> p_accept(2);
   
   RcppGSL::matrix<double> f(2, 10); //an Aid Matrix?
-  
+  RcppGSL::vector<double> f_row(f.ncol());
   // RcppGSL::vector<double> y(100);
   double y;
   int BK_ncol = 100;
@@ -499,6 +522,7 @@ void ACE_transform_cpp()
   RcppGSL::vector<double> Bk__ij(kk);
   //RcppGSL::vector<double> Bk__ij()
   
+  //RcppGSL::vector<double> p1(f.ncol());
     
   for(int i = 0; i < n1; ++i)
   {
@@ -674,39 +698,38 @@ void ACE_transform_cpp()
           
           Rcpp::NumericVector r1 = do_rtruncnorm(10, lower, upper, 0.0, sigma_r[j]);
           
-          for(int ww = 0; w < 10; ++w)
+          for(int ww = 0; w < 10; ++ww)
           {
               gsl_vector_memcpy(tmp_Unit_e, unit_e);
               gsl_vector_scale(r1[ww], tmp_Unit_e);
               gsl_matrix_get_col(Gam_col, Gam, j);
               gsl_vector_add(Gam_col, tmp_Unit_e;
               gsl_matrix_set_col(w1, ww, Gam_col);
+              double f1 = 0, f2, f3;
               for(int i = 0; i < n; ++i)
               {
                  gsl_matrix_get_col(Bk__ij ,Bk[j], i);
-                 double f1, f2, f3;
                  gsl_blas_ddot(Gam_col, Bk__ij, f2);
                  f2 -= double(Ua(i, j))- double(Uc(i, j));
                  f2 *= f2;
                  gsl_matrix_get_col(Bk__ij, bk[j], i);
                  gsl_blas_ddot(Gam_col, Bk__ij, f3);
-                                 
+                 f3 += 2 * Sigma_E;
+                 f1 = f1 - f2 / f3;              
               }
-
+              
+              f(0, ww) = f1 - txAx(Gam_col, M) / (2 * tao[j]) - double(r1[j])^2/(2*sigma_r[j]^2);
           }
           
-        //   for(int ff = 0; ff < 10; ++f)
-        //   {
-        //       double f1 = 0;
-        //       for(int i = 0; i < n; ++i)
-        //       {
-        //           double f2;
-        //           gsl_matrix_get
-        //           gsl_blas_ddot()
-        //           f1 = f1 -
-        //       }
-        //   }
+          gsl_matrix_get_row(f_row, f, 0);
+          double f1_m = gsl_vector_max(f_row);
           
+          for(int ff = 0; ff < 10; ++ff)
+            f(0, ff) = std::exp(double(f(0, ff)) - f1_m);
+            
+          gsl_vector_scale(1/VecSum(f_row), f_row);
+          
+             
           
       }
   }
