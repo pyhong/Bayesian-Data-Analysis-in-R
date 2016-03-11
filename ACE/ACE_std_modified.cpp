@@ -9,7 +9,6 @@
 #include <gsl/gsl_bspline.h>
 
 using namespace RcppGSL;
-
 //  [[Rcpp::export]]
 double txAx(const Vector &x, const Matrix &A)
 {
@@ -70,13 +69,12 @@ void mvrnorm_cpp(const RcppGSL::Vector &mu, const RcppGSL::Matrix &cov, RcppGSL:
   {
     matrix<double> matMu(1,mu.size());
     int n = mu.size();
-    Rcpp::NumericVector rdvec = Rcpp::rnorm(n * times,0,1);
     RcppGSL::matrix<double> mat(times,n);
     int count = 0;
     for(int i = 0; i < times; ++i)
       for(int j = 0; j < n; ++j)
       {
-        mat(i,j) = rdvec[count];
+        mat(i,j) = R::rnorm(0,1);
         count = count + 1;
         matMu(i,j) = mu[j];
       }
