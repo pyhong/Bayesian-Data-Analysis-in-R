@@ -438,7 +438,7 @@ void ACE_transform_cpp()
   
   vector<double> Bcoef(kk);
   int nderiv = 1;
-  matrix<double> Bcoef_Driv(nderiv, kk);
+  matrix<double> Bcoef_Driv(kk, nderiv+1);
   
   matrix<double> Gam(kk, 2);
   double tao[2];
@@ -457,7 +457,7 @@ void ACE_transform_cpp()
   gsl_matrix * GY[2];
   for(int i = 0; i < 2; ++i)
   {
-      Bk[i] = gsl_matrix_calloc(kk, BK_ncol);
+      BK[i] = gsl_matrix_calloc(kk, BK_ncol);
       GY[i] = gsl_matrix_calloc(BK_ncol, (MCAX-GNUM));
   }
 
@@ -486,8 +486,6 @@ void ACE_transform_cpp()
 
   truncated truncnorm;
   double r1[10];
-
-
     
   for(int i = 0; i < n1; ++i)
   {
@@ -570,43 +568,43 @@ void ACE_transform_cpp()
     for(int k = 0; k < n; ++k)
     {
       double yj = gsl_vector_get(Ycol, k);
-      //printf_vector(Ycol);
-      gsl_bspline_eval(yj, Bcoef, bw);
-      gsl_matrix_set_row(Bk[i], k, Bcoef);
-      //printf_vector(Bcoef);
-      
       gsl_bspline_deriv_eval(yj, nderiv, Bcoef_Driv, bw);   //something's wrong here
-      gsl_matrix_get_row(Bcoef, Bcoef_Driv, 0);
-      printf_vector(Bcoef);
+      gsl_matrix_get_col(Bcoef, Bcoef_Driv, 0); //Deriv of order 0
+      gsl_matrix_set_row(Bk[i], k, Bcoef);
+      gsl_matrix_get_col(Bcoef, Bcoef_Driv, 1); //Deriv of order 1
       gsl_matrix_set_row(bk[i], k, Bcoef);
+      
     }
   }
   
-//   for(int i = 0; i < kk; ++i)
-//   {
-//     Gam(0, i) = (13.5-0.285)/24*i+0.285;
-//     Gam(1, i) = (15-0.285)/24*i+0.285;
-//   }
+  for(int i = 0; i < kk; ++i)
+  {
+    Gam(0, i) = (13.5-0.285)/24*i+0.285;
+    Gam(1, i) = (15-0.285)/24*i+0.285;
+  }
   
-//   for(int i = 0; i < 2; ++i)
-//     tao[i] = 1/(Rcpp::rgamma(1, 1, 1/0.005)[0]);
+  for(int i = 0; i < 2; ++i)
+    tao[i] = 1/(R::rgamma(1, 1/0.005)); 
 
-//   gsl_vector_set_zero(p_accept);
-//   gsl_matrix_set_zero(f);
+  gsl_vector_set_zero(p_accept);
+  gsl_matrix_set_zero(f);
+  
+  
 
-//   for(int i = 0; i < 2; ++i)
-//   {
-//     gsl_matrix_get_col(Ycol, Y, i);
-//     double minYi = gsl_vector_min(Ycol);
-//     double maxYi = gsl_vector_max(Ycol);
-//     gsl_bspline_knots_uniform(minYi, maxYi, bw);
-//     for(int j = 0; j < BK_ncol; ++j)
-//     {
-//       y = (maxYi - minYi)/(BK_ncol-1.0) * j + minYi;
-//       gsl_bspline_eval(y, Bcoef, bw);
-//       gsl_matrix_set_row(BK[i], j, Bcoef);
-//     }
-//   }
+  for(int i = 0; i < 2; ++i)
+  {
+    gsl_matrix_get_col(Ycol, Y, i);
+    double minYi = gsl_vector_min(Ycol);
+    double maxYi = gsl_vector_max(Ycol);
+    gsl_bspline_knots_uniform(minYi, maxYi, bw);
+    for(int j = 0; j < BK_ncol; ++j)
+    {
+      y = (maxYi - minYi)/(BK_ncol-1.0) * j + minYi;
+      gsl_bspline_eval(y, Bcoef, bw);
+//      printf_vector(Bcoef);
+      gsl_matrix_set_row(BK[i], j, Bcoef);
+    }
+  }
   
 //   for(int i = 0; i < 2; ++i)
 //   {
