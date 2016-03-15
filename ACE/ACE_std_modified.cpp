@@ -10,50 +10,52 @@
 
 using namespace RcppGSL;
 
-//  [[Rcpp::export]]
-double txAx(const Vector &x, const Matrix &A)
+double txAx(const gsl_vector *x, const gsl_matrix *A)
 {
-  int n = x.size();
-  matrix<double> vec_t(1,n);
-  matrix<double> tt(1,n);
-  matrix<double> vec(n,1);
-  matrix<double> C(1,1);
+  int n = x->size;
+  gsl_matrix * vec_t = gsl_matrix_calloc(1,n);
+  gsl_matrix * tt = gsl_matrix_calloc(1,n);
+  gsl_matrix * vec = gsl_matrix_calloc(n,1);
+  gsl_matrix * C = gsl_matrix_calloc(1,1);
   gsl_matrix_set_row(vec_t,0,x);
   gsl_matrix_set_col(vec,0,x);
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, vec_t, A, 0.0, tt);
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, tt, vec, 0.0, C);
   double result = gsl_matrix_get(C,0,0);
-  vec_t.free();
-  tt.free();
-  vec.free();
-  C.free();
+  gsl_matrix_free(vec_t);
+  gsl_matrix_free(tt);
+  gsl_matrix_free(vec);
+  gsl_matrix_free(C);
   return result;
 }
 
-// [[Rcpp::export]]
-double VecSum(const Vector & x)
+
+double VecSum(const gsl_vector * x)
 {
   double sum = 0;
-  int n = x.size();
+  int n = x->size;
   for(int i = 0; i < n; ++i)
     sum+=gsl_vector_get(x, i);
   return sum;
 }
-//  [[Rcpp::export]]
 
-void RowToMatrix(Matrix tmpX, const Matrix &X, int row, int k)
+
+void RowToMatrix(gsl_matrix * tmpX, const gsl_matrix * X, int row, int k)
 {
-  int n = X.ncol();
+  int n = X->size2;
   for(int i = 0; i < n/k; ++i)
     for(int j = 0; j < k; ++j)
-      tmpX(j, i) = gsl_matrix_get(X,row, i * n/k + j); //use double(mat(i,j)) or gsl_matrix_get(mat,i,j)
+    {
+      double tt = gsl_matrix_get(X,row, i * n/k + j); //use double(mat(i,j)) or gsl_matrix_get(mat,i,j)
+      gsl_matrix_set(tmpX, j, i, tt);
+    }
 }
 
-void cpy(Vector A, Rcpp::NumericVector B)
+void cpy(gsl_vector * A, Rcpp::NumericVector B)
 {
-  int n = A.size();
+  int n = A->size;
   for(int i = 0; i < n; ++i)
-    A[i] = B[i];
+    gsl_vector_set(A,i,B[i]);
 }
 
 void mvrnorm_cpp(const RcppGSL::Vector &mu, const RcppGSL::Matrix &cov, RcppGSL::Vector res)
@@ -70,13 +72,12 @@ void mvrnorm_cpp(const RcppGSL::Vector &mu, const RcppGSL::Matrix &cov, RcppGSL:
   {
     matrix<double> matMu(1,mu.size());
     int n = mu.size();
-    Rcpp::NumericVector rdvec = Rcpp::rnorm(n * times,0,1);
     RcppGSL::matrix<double> mat(times,n);
     int count = 0;
     for(int i = 0; i < times; ++i)
       for(int j = 0; j < n; ++j)
       {
-        mat(i,j) = rdvec[count];
+        mat(i,j) = R::rnorm(0,1);
         count = count + 1;
         matMu(i,j) = mu[j];
       }

@@ -1,6 +1,6 @@
-
 //  [[Rcpp::depends(RcppGSL)]]
 #include <Rcpp.h>
+#include "Rmath.h"
 #include <RcppGSL.h>
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_linalg.h>
@@ -10,7 +10,6 @@
 #include <gsl/gsl_rng.h>
 #include <limits.h>
 
-using namespace RcppGSL;
 //rtruncnorm
 #define TAIL_LIMIT  2.983851594898812
 #define EXPTLOVTL  0.00390733345803262
@@ -19,11 +18,15 @@ using namespace RcppGSL;
 #define MAX_PTAIL  0.00390733345803262
 #define basep   0.0078125
 #define infinity (std::numeric_limits<double>::infinity() )
+#define min_double (std::numeric_limits<double>::min())
+#define max_double (std::numeric_limits<double>::max())
 //#define NAN  (std::numeric_limits<double>::quiet_NaN())
 //#define M_PI 3.141592653589793 
 
 #define RTAIL_BIN  162
 #define LTAIL_BIN  (-163)
+
+using namespace R;
 
 class truncated
 {
@@ -231,57 +234,59 @@ public:
 //rtruncnorm
 
 
-//  [[Rcpp::export]]
-double txAx(const vector<double> &x, const matrix<double> &A)
+
+double txAx(const gsl_vector *x, const gsl_matrix *A)
 {
-  int n = x.size();
-  matrix<double> vec_t(1,n);
-  matrix<double> tt(1,n);
-  matrix<double> vec(n,1);
-  matrix<double> C(1,1);
+  int n = x->size;
+  gsl_matrix * vec_t = gsl_matrix_calloc(1,n);
+  gsl_matrix * tt = gsl_matrix_calloc(1,n);
+  gsl_matrix * vec = gsl_matrix_calloc(n,1);
+  gsl_matrix * C = gsl_matrix_calloc(1,1);
   gsl_matrix_set_row(vec_t,0,x);
   gsl_matrix_set_col(vec,0,x);
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, vec_t, A, 0.0, tt);
   gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, tt, vec, 0.0, C);
   double result = gsl_matrix_get(C,0,0);
-  vec_t.free();
-  tt.free();
-  vec.free();
-  C.free();
+  gsl_matrix_free(vec_t);
+  gsl_matrix_free(tt);
+  gsl_matrix_free(vec);
+  gsl_matrix_free(C);
   return result;
 }
 
-// [[Rcpp::export]]
-double VecSum(const vector<double> & x)
+double VecSum(const gsl_vector * x)
 {
   double sum = 0;
-  int n = x.size();
+  int n = x->size;
   for(int i = 0; i < n; ++i)
     sum+=gsl_vector_get(x, i);
   return sum;
 }
-//  [[Rcpp::export]]
 
-void RowToMatrix(matrix<double> tmpX, const matrix<double> &X, int row, int k)
+
+void RowToMatrix(gsl_matrix * tmpX, const gsl_matrix * X, int row, int k)
 {
-  int n = X.ncol();
+  int n = X->size2;
   for(int i = 0; i < n/k; ++i)
     for(int j = 0; j < k; ++j)
-      tmpX(j, i) = gsl_matrix_get(X,row, i * n/k + j); //use double(mat(i,j)) or gsl_matrix_get(mat,i,j)
+    {
+      double tt = gsl_matrix_get(X,row, i * n/k + j); //use double(mat(i,j)) or gsl_matrix_get(mat,i,j)
+      gsl_matrix_set(tmpX, j, i, tt);
+    }
 }
 
-void cpy(vector<double> A, Rcpp::NumericVector B)
+void cpy(gsl_vector * A, Rcpp::NumericVector B)
 {
-  int n = A.size();
+  int n = A->size;
   for(int i = 0; i < n; ++i)
-    A[i] = B[i];
+    gsl_vector_set(A,i,B[i]);
 }
 
-void mvrnorm_cpp(const RcppGSL::Vector &mu, const RcppGSL::Matrix &cov, RcppGSL::Vector res)
+void mvrnorm_cpp(const gsl_vector * mu, const gsl_matrix * cov, gsl_vector * res)
 {
   int times = 1; 
   gsl_set_error_handler_off();
-  RcppGSL::matrix<double> chol_cov(cov.nrow(),cov.ncol());
+  gsl_matrix * chol_cov = gsl_matrix_calloc(cov->size1,cov->size2);
   gsl_matrix_memcpy(chol_cov, cov);
   if(gsl_linalg_cholesky_decomp(chol_cov)) 
   {
@@ -289,38 +294,42 @@ void mvrnorm_cpp(const RcppGSL::Vector &mu, const RcppGSL::Matrix &cov, RcppGSL:
   }
   else
   {
-    matrix<double> matMu(1,mu.size());
-    int n = mu.size();
-    RcppGSL::matrix<double> mat(times,n);
+    int n = mu->size;
+    gsl_matrix * matMu = gsl_matrix_calloc(1,n);
+    gsl_matrix * mat = gsl_matrix_calloc(times,n);
     int count = 0;
     for(int i = 0; i < times; ++i)
       for(int j = 0; j < n; ++j)
       {
-        mat(i,j) = R::rnorm(0,1);
-        count = count + 1;
-        matMu(i,j) = mu[j];
+        gsl_matrix_set(mat, i, j, (rnorm(0,1)));
+        count += 1;
+        double muj = gsl_vector_get(mu, j);
+        gsl_matrix_set(matMu, i, j, muj);
       }
       
-      gsl_blas_dtrmm(CblasRight, CblasUpper, CblasNoTrans,CblasNonUnit,1.0, chol_cov,mat);
+    gsl_blas_dtrmm(CblasRight, CblasUpper, CblasNoTrans,CblasNonUnit,1.0, chol_cov,mat);
     gsl_matrix_add(matMu,mat);
     gsl_matrix_get_row(res, matMu, 0);
-    matMu.free();
-    mat.free();
-    chol_cov.free();
+    gsl_matrix_free(matMu);
+    gsl_matrix_free(mat);
+    gsl_matrix_free(chol_cov);
+    // matMu.free();
+    // mat.free();
+    // chol_cov.free();
   }
 }
 
-void GInverse(matrix<double> A)  
+void GInverse(gsl_matrix * A)  
 {  
-  int n = A.ncol();  
-  matrix<double> inverse(n, n);
+  int n = A->size2;  
+  gsl_matrix * inverse = gsl_matrix_calloc(n, n);
   gsl_permutation *p = gsl_permutation_alloc(n);  
   int sign = 0;  
   gsl_linalg_LU_decomp(A, p, &sign);  
   gsl_linalg_LU_invert(A, p, inverse);  
   gsl_permutation_free(p);  
   gsl_matrix_memcpy(A, inverse);
-  inverse.free();
+  gsl_matrix_free(inverse);
 }
 
 void printf_matrix(const gsl_matrix * M)
@@ -354,69 +363,66 @@ void ACE_transform_cpp()
   r = gsl_rng_alloc(T);
   
   int n = 1000, n1 = 500, p = 2, MCAX = 2000, GNUM = 1800;
-  matrix<double> Y(n, p);
-  matrix<double> Ystar(n, p);
-  matrix<double> X(n, 2 * p); 
+  gsl_matrix * Y = gsl_matrix_calloc(n, p);
+  gsl_matrix * Ystar = gsl_matrix_calloc(n, p);
+  gsl_matrix * X = gsl_matrix_calloc(n, 2 * p); 
   double tmpA[] = {1.0,0.5,0.5,1.0};
   gsl_matrix_view tmpA_view = gsl_matrix_view_array(tmpA, 2, 2);
-  matrix<double> A(2, 2);
+  gsl_matrix * A = gsl_matrix_calloc(2, 2);
   gsl_matrix_memcpy(A, &tmpA_view.matrix);
   
-  vector<double> Beta(2);
-  Beta[0] = 1.0; Beta[1] = 0.5;
+  gsl_vector * Beta = gsl_vector_calloc(2);
+  gsl_vector_set(Beta, 0, 1.0); 
+  gsl_vector_set(Beta, 0, 0.5);
   double Sigma_A = 0.5;
   double Sigma_C = 0.5;
   double Sigma_E = 0.2;
   
-  matrix<double> invA(2,2);
+  gsl_matrix * invA = gsl_matrix_calloc(2,2);
   gsl_matrix_memcpy(invA, A);
   GInverse(invA);
-  matrix<double> Ua(n,2), Uc(n,2);
+  gsl_matrix * Ua = gsl_matrix_calloc(n,2);
+  gsl_matrix * Uc = gsl_matrix_calloc(n,2);
   
   int sp = 10;
   int MCMC_times = 500;
   Rcpp::NumericMatrix Est(sp,5), SEst(sp,5);
-  gsl_matrix_set_zero(Ua);
-  gsl_matrix_set_zero(Uc);
   
-  matrix<double> Sigma_beta(p,p);
-  vector<double> Mu_beta(p);
+  gsl_matrix * Sigma_beta = gsl_matrix_calloc(p,p);
+  gsl_vector * Mu_beta = gsl_vector_calloc(p);//
   
   double tmpmu[] = {0,0};
   gsl_vector_view tmpmu_view = gsl_vector_view_array(tmpmu, 2);
-  vector<double> tmpMu(2);
+  gsl_vector * tmpMu = gsl_vector_alloc(2);
   gsl_vector_memcpy(tmpMu, &tmpmu_view.vector);
   
   Rcpp::NumericMatrix MCMC(MCAX, 4);
   
-  vector<double> Yi(2);
-  matrix<double> Xi(2,2);
-  vector<double> Uai(2);
-  vector<double> Uci(2);
-  matrix<double> tmpXi(2,2);
-  vector<double> tmpx3(2);
-  vector<double> tmpx4(2);
-  vector<double> Ue(2);
-  matrix<double> SigmaAA(2,2);
-  matrix<double> Sigma_Emat(2, 2);
-  matrix<double> InvADSigma_A(2, 2);  
+  gsl_vector * Yi = gsl_vector_calloc(2);
+  gsl_matrix * Xi = gsl_matrix_calloc(2,2);
+  gsl_vector * Uai = gsl_vector_calloc(2);
+  gsl_vector * Uci = gsl_vector_calloc(2);
+  gsl_matrix * tmpXi = gsl_matrix_calloc(2,2);
+  gsl_vector * tmpx3 = gsl_vector_calloc(2);
+  gsl_vector * tmpx4 = gsl_vector_calloc(2);
+  gsl_vector * Ue = gsl_vector_calloc(2);
+  gsl_matrix * SigmaAA = gsl_matrix_calloc(2,2);
+  gsl_matrix * Sigma_Emat = gsl_matrix_calloc(2, 2);
+  gsl_matrix * InvADSigma_A = gsl_matrix_calloc(2, 2);  
 
  
   
   int kk = 25;  // the number of basis
                 // thus nbreaks = 25+2-4=23
                 // 
-  matrix<double> D0(kk-1, kk);
-  matrix<double> D1(kk-1-1, kk-1);
+  gsl_matrix * D0 = gsl_matrix_calloc(kk-1, kk);
+  gsl_matrix * D1 = gsl_matrix_calloc(kk-1-1, kk-1);
   double a[2] = {-1,1};
   
-  matrix<double> N(kk, kk-2);
-  matrix<double> M(kk, kk);
-  vector<double> unit_e(kk); 
-  vector<double> tmpMu_e(kk);
-  gsl_vector_set_zero(tmpMu_e);
-//   matrix<double> Bk(2*kk, n);
-//   matrix<double> bk(2*kk, n);
+  gsl_matrix * N = gsl_matrix_calloc(kk, kk-2);
+  gsl_matrix * M = gsl_matrix_calloc(kk, kk);
+  gsl_vector * unit_e = gsl_vector_calloc(kk); 
+  gsl_vector * tmpMu_e = gsl_vector_calloc(kk);
 
   gsl_matrix * Bk[2];
   gsl_matrix * bk[2];
@@ -428,26 +434,25 @@ void ACE_transform_cpp()
   
   gsl_matrix * tmpBk = gsl_matrix_calloc(kk, kk);
   
-  matrix<double> ks(2, kk+4-2);
-  vector<double> Ycol(n);
+  gsl_matrix * ks = gsl_matrix_calloc(2, kk+4-2);
+  gsl_vector * Ycol = gsl_vector_calloc(n);
   
   int bsorder = 4;
   int nbreak = kk + 2 - bsorder;
   gsl_bspline_workspace *bw = gsl_bspline_alloc(bsorder, nbreak);
-  vector<double> ksRow(nbreak);
+  gsl_vector * ksRow = gsl_vector_calloc(nbreak);
   
-  vector<double> Bcoef(kk);
+  gsl_vector * Bcoef = gsl_vector_calloc(kk);
   int nderiv = 1;
-  matrix<double> Bcoef_Driv(kk, nderiv+1);
+  gsl_matrix * Bcoef_Driv = gsl_matrix_calloc(kk, nderiv+1);
   
-  matrix<double> Gam(kk, 2);
+  gsl_matrix * Gam = gsl_matrix_calloc(kk, 2);
   double tao[2];
   double sigma_r[] = {2.7, 2.7};
-  vector<double> p_accept(2);
+  gsl_vector * p_accept = gsl_vector_calloc(2);
   
-  matrix<double> f(2, 10); //an Aid Matrix?
-  vector<double> f_row(f.ncol());
-  // vector<double> y(100);
+  gsl_matrix * f = gsl_matrix_calloc(2, 10); //an Aid Matrix?
+  gsl_vector * f_row = gsl_vector_calloc(f->size2);
   
   int BK_ncol = 100;
 
@@ -459,7 +464,7 @@ void ACE_transform_cpp()
       GY[i] = gsl_matrix_calloc(BK_ncol, (MCAX-GNUM));
   }
   
-  matrix<double> gy(n, p);
+  gsl_matrix * gy = gsl_matrix_calloc(n, p);
   
   gsl_matrix * com_gy[sp];
   gsl_matrix * com_gy_beta[sp];
@@ -469,35 +474,37 @@ void ACE_transform_cpp()
     com_gy_beta[i] = gsl_matrix_calloc(n, 2);      
   }
   
-  matrix<double> y_beta(n, p);
+  gsl_matrix * y_beta = gsl_matrix_calloc(n, p);
   double lower, upper;
-  matrix<double> lo_up(2, kk);
-  vector<double> lo_up_col(kk); 
+  gsl_matrix * lo_up = gsl_matrix_calloc(2, kk);
+  gsl_vector * lo_up_col = gsl_vector_calloc(kk); 
   
   //我真是服了师兄r-code里面的各种神参数神变量名了...
   
-  matrix<double> w1(kk, 10);
-  vector<double> tmp_Unit_e(kk);
-  vector<double> Gam_col(kk);
-  vector<double> Bk__ij(kk);
+  gsl_matrix * w1 = gsl_matrix_calloc(kk, 10);
+  gsl_vector * tmp_Unit_e = gsl_vector_calloc(kk);
+  gsl_vector * Gam_col = gsl_vector_calloc(kk);
+  gsl_vector * Bk__ij = gsl_vector_calloc(kk);
 
   truncated truncnorm;
   double r1[10];
+  
+  double Uai0, Uci0;
     
   for(int i = 0; i < n1; ++i)
-  {
-    Ua(i,0) = R::rnorm(0.0, std::sqrt(Sigma_A));
-    Ua(i,1) = gsl_matrix_get(Ua,i,0);
-    Uc(i,0) = R::rnorm(0.0, std::sqrt(Sigma_C));
-    Uc(i,1) = gsl_matrix_get(Uc, i, 0);
-    
+  {    
     for(int k = 0; k < 2; ++k)
-        Ue[k] = R::rnorm(0.0, std::sqrt(Sigma_E));
+        gsl_vector_set(Ue, k, rnorm(0.0, std::sqrt(Sigma_E)));
+        
+    Uai0 = rnorm(0.0, std::sqrt(Sigma_A));
+    Uci0 = rnorm(0.0, std::sqrt(Sigma_C));
     
     for(int m = 0; m < 2; ++m) 
     {
-      X(i, m) = R::rnorm(0.0, 2.0);
-      X(i, m+2) = R::rnorm(0.0, 2.0);
+      gsl_matrix_set(X, i, m, rnorm(0.0, 2.0));
+      gsl_matrix_set(X, i, m+2, rnorm(0.0, 2.0));
+      gsl_matrix_set(Ua, i, m, Uai0);
+      gsl_matrix_set(Uc, i, m, Uci0);
     }
     
     RowToMatrix(Xi, X, i, 2);
@@ -516,16 +523,16 @@ void ACE_transform_cpp()
   {
     mvrnorm_cpp(tmpMu, SigmaAA, tmpx3);
     gsl_matrix_set_row(Ua, i, tmpx3);
-    Uc(i, 0) = R::rnorm(0.0, std::sqrt(Sigma_C));
-    Uc(i, 1) = gsl_matrix_get(Uc, i, 0);
+    Uci0 = rnorm(0.0, std::sqrt(Sigma_C));
     
     for(int k = 0; k < 2; ++k)
-        Ue[k] = R::rnorm(0.0, std::sqrt(Sigma_E));
+        gsl_vector_set(Ue, k, rnorm(0.0, std::sqrt(Sigma_E)));
     
     for(int m = 0; m < 2; ++m)
     {
-      X(i, m) = R::rnorm(0.0, 2.0);
-      X(i, m+2) = R::rnorm(0.0, 2.0);
+      gsl_matrix_set(X, i, m, rnorm(0.0, 2.0));
+      gsl_matrix_set(X, i, m+2, rnorm(0.0, 2.0));
+      gsl_matrix_set(Uc, i, m, Uci0);
     }
     
     RowToMatrix(Xi, X, i, 2);
@@ -539,18 +546,18 @@ void ACE_transform_cpp()
   
   for(int i = 0; i < n; ++i)
     for(int j = 0; j < n; ++j)
-      Ystar(i, j) = std::exp(gsl_matrix_get(Y,i,j));
+      gsl_matrix_set(Ystar, i, j, std::exp(gsl_matrix_get(Y,i,j)));
 
   for(int i = 0; i < (kk-1); ++i)
   {
-    D0(i,i) = a[0];
-    D0(i,i+1) = a[1];
+    gsl_matrix_set(D0, i, i, a[0]);
+    gsl_matrix_set(D0, i, i+1, a[1]);
   }
   
   for(int i = 0; i < (kk-2); ++i)
   {
-    D1(i,i) = a[0];
-    D1(i,i+1) = a[1];
+    gsl_matrix_set(D1, i, i, a[0]);
+    gsl_matrix_set(D1, i, i+1, a[1]);
   }
   
   
@@ -578,13 +585,13 @@ void ACE_transform_cpp()
   
   for(int i = 0; i < kk; ++i)
   {
-    Gam(0, i) = (13.5-0.285)/24*i+0.285;
-    Gam(1, i) = (15-0.285)/24*i+0.285;
+    gsl_matrix_set(Gam, 0, i, (13.5-0.285)/24*i+0.285);
+    gsl_matrix_set(Gam, 1, i, (15-0.285)/24*i+0.285);
   }
   
   for(int i = 0; i < 2; ++i)
   {
-    tao[i] = 1/(R::rgamma(1, 1/0.005)); 
+    tao[i] = 1/(rgamma(1, 1/0.005)); 
   }
 
   gsl_vector_set_zero(p_accept);
@@ -601,87 +608,91 @@ void ACE_transform_cpp()
     {
       double y = (maxYi - minYi)/(BK_ncol-1.0) * j + minYi;
       gsl_bspline_eval(y, Bcoef, bw);
- //     printf_matrix(BK[i]);
-  //    printf("%dth %d \n", j, Bcoef.size());
-  //    printf_vector(Bcoef);
-   //   printf("%d %d\n", BK[0]->size1, BK[0]->size2);
-    gsl_matrix_set_col(BK[i], j, Bcoef);
+      gsl_matrix_set_col(BK[i], j, Bcoef);
     }
   }
 
   
-//   for(int i = 0; i < 2; ++i)
-//   {
-//     gsl_matrix_set_zero(GY[i]);
-//   }
-//   gsl_matrix_set_zero(gy);
+  for(int i = 0; i < 2; ++i)
+  {
+    gsl_matrix_set_zero(GY[i]);
+  }
+  gsl_matrix_set_zero(gy);
   
-//   for(int i = 0; i < n1; ++i)
-//   {
-//     Ua(i,0) = R::rnorm(0.0, std::sqrt(Sigma_A));
-//     Ua(i,1) = gsl_matrix_get(Ua,i,0);
-//     Uc(i,0) = R::rnorm(0.0, std::sqrt(Sigma_C));
-//     Uc(i,1) = gsl_matrix_get(Uc, i, 0);
-//   }
+  for(int i = 0; i < n1; ++i)
+  {
+    Uai0 = rnorm(0.0, std::sqrt(Sigma_A));
+    Uci0 = rnorm(0.0, std::sqrt(Sigma_C));
+    for(int m = 0; m < 2; ++m) 
+    {
+      gsl_matrix_set(Ua, i, m, Uai0);
+      gsl_matrix_set(Uc, i, m, Uci0);
+    }
+  }
   
-//   gsl_matrix_memcpy(SigmaAA, A);
-//   gsl_matrix_scale(SigmaAA, Sigma_A);
+  gsl_matrix_memcpy(SigmaAA, A);
+  gsl_matrix_scale(SigmaAA, Sigma_A);
   
+  for(int i = n1; i < n; ++i)
+  {
+    mvrnorm_cpp(tmpMu, SigmaAA, tmpx3);
+    gsl_matrix_set_row(Ua, i, tmpx3);
+    Uci0 = rnorm(0.0, std::sqrt(Sigma_C));
+    for(int m = 0; m < 2; ++m) 
+      gsl_matrix_set(Uc, i, m, Uci0);
+  }
   
-  //从这里开始，正态分布随机数生成器崩溃？
-//   for(int i = n1; i < n; ++i)
-//   {
-//     mvrnorm_cpp(tmpMu, SigmaAA, tmpx3);
-//     gsl_matrix_set_row(Ua, i, tmpx3);
-//     Uc(i, 0) = R::rnorm(0.0, std::sqrt(Sigma_C));
-//     Uc(i, 1) = gsl_matrix_get(Uc, i, 0);
-//   }
-  
-//   for(int GIB = 0; GIB < MCAX; ++GIB)
-//   {
-//       for(int j = 0; j < 2; ++j)
-//       {
-//           gsl_matrix_scale(M, 1/tao[j]);
-//           gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1,Bk[j], Bk[j],0,M);
-//           GInverse(M);
-//           if(GIB==0)
-//           {
-//               printf_matrix(M);
-//           }
-//           mvrnorm_cpp(tmpMu_e, M, unit_e);
-//           gsl_vector_memcpy(tmp_Unit_e, unit_e);
-//           gsl_vector_mul(tmp_Unit_e, tmp_Unit_e);
-//           gsl_vector_scale(unit_e, 1/(std::sqrt(VecSum(tmp_Unit_e))));
+  for(int GIB = 0; GIB < MCAX; ++GIB)
+  {
+      for(int j = 0; j < 2; ++j)
+      {
+          gsl_matrix_scale(M, 1/tao[j]);
+          gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1,Bk[j], Bk[j],0,M);
+          GInverse(M);
+          if(GIB==0)
+          {
+              printf_matrix(M);
+          }
+          mvrnorm_cpp(tmpMu_e, M, unit_e);
+          gsl_vector_memcpy(tmp_Unit_e, unit_e);
+          gsl_vector_mul(tmp_Unit_e, tmp_Unit_e);
+          gsl_vector_scale(unit_e, 1/(std::sqrt(VecSum(tmp_Unit_e))));
           
-//           for(int i = 0; i < kk; ++i)
-//           {
-//               lo_up(0, i) = std::numeric_limits<double>::min();
-//               lo_up(1, i) = std::numeric_limits<double>::max();
-//           }
+          for(int i = 0; i < kk; ++i)
+          {
+              gsl_matrix_set(lo_up, 0, i, min_double);
+              gsl_matrix_set(lo_up, 1, i, max_double);
+          }
           
-//           for(int ii = 0; ii < (kk-1); ++ii)
-//           {
-//               if(unit_e[ii+1] > unit_e[ii])
-//                 lo_up(0, ii) = (Gam(ii, j) - Gam(ii+1, j)) / (unit_e[ii+1] - unit_e[ii]);
-//               else
-//                 lo_up(1, ii) = (Gam(ii, j) - Gam(ii+1, j)) / (unit_e[ii+1] - unit_e[ii]);
-//           }
+          double lo_up_i,Gam_0, Gam_1, unit_e_0, unit_e_1;;
+          for(int ii = 0; ii < (kk-1); ++ii)
+          {
+              Gam_0 = gsl_matrix_get(Gam, ii, j);
+              Gam_1 = gsl_matrix_get(Gam, ii+1, j);
+              unit_e_0 = gsl_vector_get(unit_e, ii);
+              unit_e_1 = gsl_vector_get(unit_e, ii+1);
+              lo_up_i = (Gam_0 - Gam_1) / (unit_e_1 - unit_e_0);
+              if(unit_e_1 > unit_e_0)
+                gsl_matrix_set(lo_up, 0, ii, lo_up_i);
+              else
+                gsl_matrix_set(lo_up, 1, ii, lo_up_i);
+          }
           
-//           gsl_matrix_get_col(lo_up_col, lo_up, 0);
-//           lower = gsl_vector_max(lo_up_col);
-//           gsl_matrix_get_col(lo_up_col, lo_up, 1);
-//           upper = gsl_vector_min(lo_up_col);
+          gsl_matrix_get_col(lo_up_col, lo_up, 0);
+          lower = gsl_vector_max(lo_up_col);
+          gsl_matrix_get_col(lo_up_col, lo_up, 1);
+          upper = gsl_vector_min(lo_up_col);
           
-//           for(int i = 0; i < 10; ++i)
-//             r1[i] = truncnorm.draw(0, sigma_r[j], lower, upper);
+          for(int i = 0; i < 10; ++i)
+            r1[i] = truncnorm.draw(0, sigma_r[j], lower, upper);
           
           
 
           
              
           
-//       }
-//   }
+      }
+  }
 
     
   
