@@ -9,8 +9,13 @@
 #include <gsl/gsl_bspline.h>
 
 using namespace RcppGSL;
+<<<<<<< HEAD
 
 double txAx(const gsl_vector *x, const gsl_matrix *A)
+=======
+//  [[Rcpp::export]]
+double txAx(const Vector &x, const Matrix &A)
+>>>>>>> origin/BayesianDataAnalysis
 {
   int n = x->size;
   gsl_matrix * vec_t = gsl_matrix_calloc(1,n);

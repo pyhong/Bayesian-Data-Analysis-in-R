@@ -93,6 +93,7 @@ private:
       if (xhist[ia+1] <= ax )
         ++ia;
       ia = ((a>=0)?ia:-ia-1);
+<<<<<<< HEAD
     }
     
     double p_tail_right = 0;
@@ -116,6 +117,31 @@ private:
       ib = ((b>=0)?ib:-ib-1);
     }
     
+=======
+    }
+    
+    double p_tail_right = 0;
+    if (b <= -TAIL_LIMIT ) {
+      do {
+        z = -sample_tail(-b,-a);
+      } while (z != z);
+      return z;
+    }
+    else if ( b >= TAIL_LIMIT ) {
+      p_tail_right = MAX_PTAIL;
+      ib = RTAIL_BIN;
+      bh = TAIL_LIMIT;
+      bp = 0;
+    }
+    else {
+      double bx = fabs(b);
+      ib = whichbin[ (int)(bx*128.0) ];
+      if (xhist[ib+1] <= bx )
+        ++ib;
+      ib = ((b>=0)?ib:-ib-1);
+    }
+    
+>>>>>>> origin/BayesianDataAnalysis
     if (ia == ib ) {
       do {
         z = rnd() * (bh-ah) + ah;
@@ -324,6 +350,7 @@ void GInverse(matrix<double> A)
 }
 
 void printf_matrix(const gsl_matrix * M)
+<<<<<<< HEAD
 {
     int nrow = M->size1;
     int ncol = M->size2;
@@ -337,6 +364,21 @@ void printf_matrix(const gsl_matrix * M)
 
 void printf_vector(const gsl_vector * x)
 {
+=======
+{
+    int nrow = M->size1;
+    int ncol = M->size2;
+    for(int i = 0; i < nrow; ++i)
+    {
+        for(int j = 0; j < ncol; ++j)
+            printf("%f ", gsl_matrix_get(M, i, j));
+        printf("\n");
+    }
+}
+
+void printf_vector(const gsl_vector * x)
+{
+>>>>>>> origin/BayesianDataAnalysis
     int size = x->size;
     for(int i = 0; i < size; ++i)
         printf("%f ", gsl_vector_get(x, i));
@@ -444,6 +486,7 @@ void ACE_transform_cpp()
   double tao[2];
   double sigma_r[] = {2.7, 2.7};
   vector<double> p_accept(2);
+<<<<<<< HEAD
   
   matrix<double> f(2, 10); //an Aid Matrix?
   vector<double> f_row(f.ncol());
@@ -451,6 +494,17 @@ void ACE_transform_cpp()
   
   int BK_ncol = 100;
 
+=======
+  
+  matrix<double> f(2, 10); //an Aid Matrix?
+  vector<double> f_row(f.ncol());
+  // vector<double> y(100);
+  double y;
+  int BK_ncol = 100;
+//   matrix<double> BK(2*kk, BK_ncol);
+//   
+//   matrix<double> GY(BK_ncol,2*(MCAX-GNUM));
+>>>>>>> origin/BayesianDataAnalysis
   gsl_matrix * BK[2];
   gsl_matrix * GY[2];
   for(int i = 0; i < 2; ++i)
@@ -458,7 +512,12 @@ void ACE_transform_cpp()
       BK[i] = gsl_matrix_calloc(kk, BK_ncol);
       GY[i] = gsl_matrix_calloc(BK_ncol, (MCAX-GNUM));
   }
+<<<<<<< HEAD
   
+=======
+
+
+>>>>>>> origin/BayesianDataAnalysis
   matrix<double> gy(n, p);
   
   gsl_matrix * com_gy[sp];
@@ -583,6 +642,7 @@ void ACE_transform_cpp()
   }
   
   for(int i = 0; i < 2; ++i)
+<<<<<<< HEAD
   {
     tao[i] = 1/(R::rgamma(1, 1/0.005)); 
   }
@@ -590,6 +650,14 @@ void ACE_transform_cpp()
   gsl_vector_set_zero(p_accept);
   gsl_matrix_set_zero(f);
  
+=======
+    tao[i] = 1/(R::rgamma(1, 1/0.005)); 
+
+  gsl_vector_set_zero(p_accept);
+  gsl_matrix_set_zero(f);
+  
+  
+>>>>>>> origin/BayesianDataAnalysis
 
   for(int i = 0; i < 2; ++i)
   {
@@ -601,11 +669,16 @@ void ACE_transform_cpp()
     {
       double y = (maxYi - minYi)/(BK_ncol-1.0) * j + minYi;
       gsl_bspline_eval(y, Bcoef, bw);
+<<<<<<< HEAD
  //     printf_matrix(BK[i]);
   //    printf("%dth %d \n", j, Bcoef.size());
   //    printf_vector(Bcoef);
    //   printf("%d %d\n", BK[0]->size1, BK[0]->size2);
     gsl_matrix_set_col(BK[i], j, Bcoef);
+=======
+//      printf_vector(Bcoef);
+      gsl_matrix_set_row(BK[i], j, Bcoef);
+>>>>>>> origin/BayesianDataAnalysis
     }
   }
 
