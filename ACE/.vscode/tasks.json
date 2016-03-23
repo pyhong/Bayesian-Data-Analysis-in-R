@@ -21,6 +21,6 @@
 	"showOutput": "always",
 
 	// args is the HelloWorld program to compile.
-	"args": ["--silent","--restore","--save","--file=${file}"]
+	"args": ["--silent","--restore","--no-save","--file=${file}"]
 }
 

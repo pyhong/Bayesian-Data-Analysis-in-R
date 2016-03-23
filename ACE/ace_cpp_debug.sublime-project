@@ -1,0 +1,7 @@
+{
+    "settings":
+    {
+    	"sublimegdb_workingdir": "D:/cygwin64/bin/",
+        "sublimegdb_commandline": "gdb --interpreter=mi file.exe"
+    }
+}

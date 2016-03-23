@@ -6,7 +6,8 @@ X=array(0,c(n,2,p))
 A=matrix(c(1,0.5,0.5,1),nrow=2); InvA=solve(A);
 
 Ua=matrix(0,nrow=n,ncol=2)
-Uc=matrix(0,nrow=n,ncol=2)
+Uc = matrix(0, nrow = n, ncol = 2)
+
 
 Est=matrix(0,10,5)
 SEst=matrix(0,10,5)

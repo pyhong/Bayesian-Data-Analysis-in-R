@@ -1,5 +1,5 @@
-Rcpp::sourceCpp('ACE_transform.cpp')
-ACE_transform_cpp()
+Rcpp::sourceCpp('ACE_transform_cpponly.cpp')
+system.time(ACE_transform_cpp())
 print("OK")
 
 # Rcpp::sourceCpp('ACE_std_modified.cpp')
