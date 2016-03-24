@@ -1,6 +1,6 @@
 //  [[Rcpp::depends(RcppGSL)]]
 #include <cstring>
-#include "Rmath.h"
+#include <iostream>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_randist.h>
@@ -351,7 +351,7 @@ void RowToMatrix(gsl_matrix * tmpX, const gsl_matrix * X, int row, int k)
 //    gsl_vector_set(A,i,B[i]);
 //}
 
-void mvrnorm_cpp(const gsl_vector * mu, const gsl_matrix * cov, gsl_vector * res)
+void mvrnorm_cpp(const gsl_rng *rr,const gsl_vector * mu, const gsl_matrix * cov, gsl_vector * res)
 {
   int times = 1; 
   gsl_set_error_handler_off();
@@ -370,7 +370,7 @@ void mvrnorm_cpp(const gsl_vector * mu, const gsl_matrix * cov, gsl_vector * res
     for(int i = 0; i < times; ++i)
       for(int j = 0; j < n; ++j)
       {
-        gsl_matrix_set(mat, i, j, (rnorm(0,1)));
+        gsl_matrix_set(mat, i, j, (gsl_ran_gaussian(rr,1)));
         count += 1;
         double muj = gsl_vector_get(mu, j);
         gsl_matrix_set(matMu, i, j, muj);
@@ -418,15 +418,14 @@ void printf_vector(const gsl_vector * x)
     printf("\n");
 }
 
-//  [[Rcpp::export]]
-void ACE_transform_cpp()
+int main()
 {
   const gsl_rng_type * T;
-  gsl_rng * r;
+  gsl_rng * rr;
   gsl_rng_env_setup();
   gsl_rng_default_seed = 0;
   T = gsl_rng_default;
-  r = gsl_rng_alloc(T);
+  rr = gsl_rng_alloc(T);
   
   int n = 1000, n1 = 500, p = 2, MCAX = 2000, GNUM = 1800;
   gsl_matrix * Y = gsl_matrix_calloc(n, p);
@@ -548,8 +547,7 @@ void ACE_transform_cpp()
   gsl_matrix * lo_up = gsl_matrix_calloc(2, kk);
   gsl_vector * lo_up_col = gsl_vector_calloc(kk); 
   
-  //我真是服了师兄r-code里面的各种神参数神变量名了...
-  
+
   gsl_matrix * w1 = gsl_matrix_calloc(kk, 10);
   gsl_vector * wstar = gsl_vector_calloc(kk);
   gsl_vector * tmp_unit_e = gsl_vector_calloc(kk);
@@ -567,15 +565,15 @@ void ACE_transform_cpp()
   for(int i = 0; i < n1; ++i)
   {    
     for(int k = 0; k < 2; ++k)
-        gsl_vector_set(Ue, k, rnorm(0.0, sqrt(Sigma_E)));
+        gsl_vector_set(Ue, k, gsl_ran_gaussian(rr, sqrt(Sigma_E)));
         
-    Uai0 = rnorm(0.0, sqrt(Sigma_A));
-    Uci0 = rnorm(0.0, sqrt(Sigma_C));
+    Uai0 = gsl_ran_gaussian(rr, sqrt(Sigma_A));
+    Uci0 = gsl_ran_gaussian(rr, sqrt(Sigma_C));
     
     for(int m = 0; m < 2; ++m) 
     {
-      gsl_matrix_set(X, i, m, rnorm(0.0, 2.0));
-      gsl_matrix_set(X, i, m+2, rnorm(0.0, 2.0));
+      gsl_matrix_set(X, i, m, gsl_ran_gaussian(rr, 2.0));
+      gsl_matrix_set(X, i, m+2, gsl_ran_gaussian(rr, 2.0));
       gsl_matrix_set(Ua, i, m, Uai0);
       gsl_matrix_set(Uc, i, m, Uci0);
     }
@@ -594,17 +592,17 @@ void ACE_transform_cpp()
   
   for(int i = n1; i < n; ++i)
   {
-    mvrnorm_cpp(tmpMu, SigmaAA, tmpx3);
+    mvrnorm_cpp(rr, tmpMu, SigmaAA, tmpx3);
     gsl_matrix_set_row(Ua, i, tmpx3);
-    Uci0 = rnorm(0.0, sqrt(Sigma_C));
+    Uci0 = gsl_ran_gaussian(rr, sqrt(Sigma_C));
     
     for(int k = 0; k < 2; ++k)
-        gsl_vector_set(Ue, k, rnorm(0.0, sqrt(Sigma_E)));
+        gsl_vector_set(Ue, k, gsl_ran_gaussian(rr, sqrt(Sigma_E)));
     
     for(int m = 0; m < 2; ++m)
     {
-      gsl_matrix_set(X, i, m, rnorm(0.0, 2.0));
-      gsl_matrix_set(X, i, m+2, rnorm(0.0, 2.0));
+      gsl_matrix_set(X, i, m, gsl_ran_gaussian(rr, 2.0));
+      gsl_matrix_set(X, i, m+2, gsl_ran_gaussian(rr, 2.0));
       gsl_matrix_set(Uc, i, m, Uci0);
     }
     
@@ -664,7 +662,7 @@ void ACE_transform_cpp()
   
   for(int i = 0; i < 2; ++i)
   {
-    tao[i] = 1/(rgamma(1, 1/0.005)); 
+    tao[i] = 1/(gsl_ran_gamma(rr, 1, 0.005)); 
   }
 
   gsl_vector_set_zero(p_accept);
@@ -694,8 +692,8 @@ void ACE_transform_cpp()
   
   for(int i = 0; i < n1; ++i)
   {
-    Uai0 = rnorm(0.0, sqrt(Sigma_A));
-    Uci0 = rnorm(0.0, sqrt(Sigma_C));
+    Uai0 = gsl_ran_gaussian(rr, sqrt(Sigma_A));
+    Uci0 = gsl_ran_gaussian(rr, sqrt(Sigma_C));
     for(int m = 0; m < 2; ++m) 
     {
       gsl_matrix_set(Ua, i, m, Uai0);
@@ -708,9 +706,9 @@ void ACE_transform_cpp()
   
   for(int i = n1; i < n; ++i)
   {
-    mvrnorm_cpp(tmpMu, SigmaAA, tmpx3);
+    mvrnorm_cpp(rr, tmpMu, SigmaAA, tmpx3);
     gsl_matrix_set_row(Ua, i, tmpx3);
-    Uci0 = rnorm(0.0, sqrt(Sigma_C));
+    Uci0 = gsl_ran_gaussian(rr, sqrt(Sigma_C));
     for(int m = 0; m < 2; ++m) 
       gsl_matrix_set(Uc, i, m, Uci0);
   }
@@ -725,7 +723,7 @@ void ACE_transform_cpp()
           gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1/Sigma_E, Bk[j], Bk[j],1,tmp_M);
 
           GInverse(tmp_M);
-          mvrnorm_cpp(tmpMu_e, tmp_M, unit_e);
+          mvrnorm_cpp(rr, tmpMu_e, tmp_M, unit_e);
           gsl_vector_memcpy(tmp_unit_e, unit_e);
           gsl_vector_mul(tmp_unit_e, tmp_unit_e);
           gsl_vector_scale(unit_e, 1/(sqrt(VecSum(tmp_unit_e))));
@@ -822,6 +820,6 @@ void ACE_transform_cpp()
 
     
   
-  
-  
+  cout<<"OK"<<endl;
+  return 0;
 }
