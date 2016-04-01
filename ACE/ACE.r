@@ -2,10 +2,10 @@ library(mvtnorm)
 library(splines)
 library(truncnorm)
 
-n=1000; n1=500; p=2
+n=500; n1=250; p=2
 
 #Total and burn-in iterations
-MCAX=2000; GNUM=1800
+MCAX=200; GNUM=180
 
 Y=matrix(0,nrow=n,ncol=p)
 X=array(0,c(n,2,p))
@@ -15,9 +15,9 @@ Ua=matrix(0,nrow=n,ncol=2)
 Uc=matrix(0,nrow=n,ncol=2)
 
 # Beta=matrix(0,nrow=MCAX,ncol=2)
-Beta=c(0.2,0.2)
-Sigma_A=0.4
-Sigma_C=0.3
+Beta=c(1,0.5)
+Sigma_A=0.6
+Sigma_C=0.2
 Sigma_E=0.1
 
 for (i in 1:n1) {
