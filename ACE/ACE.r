@@ -4,6 +4,7 @@ library(truncnorm)
 
 n=500; n1=250; p=2
 
+
 #Total and burn-in iterations
 MCAX=200; GNUM=180
 
@@ -83,6 +84,7 @@ Gam=matrix(0,ncol=2,nrow=kk)
 Gam[,1]<-seq(from=0.285,to=13.5,length=kk)
 Gam[,2]<-seq(from=0.285,to=15,length=kk)
 tao=1/rgamma(2,shape=1,rate=0.005)
+
 ###
 
 #Tuning parameters and acceptance rate
@@ -113,7 +115,7 @@ GY<-array(0,c(100,MCAX-GNUM,2))
 
 gy<-matrix(0,nrow=n,ncol=p)
 
-MCMC=matrix(0,nrow=MCAX,ncol=4)
+MCMC=matrix(0,nrow=MCAX,ncol=5)
 
 Sigma_A=0.5
 Sigma_C=0.5
@@ -160,6 +162,8 @@ for (GIB in 1:MCAX) {
     
 		lower=max(lo_up[1,],na.rm=T)
 		upper=min(lo_up[2,],na.rm=T)
+
+
     
 		r1=rtruncnorm(10, a=lower, b=upper, mean=0, sd=sigma_r[j])
     
@@ -178,6 +182,8 @@ for (GIB in 1:MCAX) {
         
 		}
     
+    
+
 		f1_m=max(f[1,])
 		
 		for (ff in 1:10) { f[1,ff]=exp(f[1,ff]-f1_m) }
@@ -203,6 +209,8 @@ for (GIB in 1:MCAX) {
     
 		lower=max(lo_up[1,],na.rm=T)
 		upper=min(lo_up[2,],na.rm=T)
+
+    ###    print(c(lower, upper))
     ###
     
 		w2=matrix(0,nrow=kk,ncol=10)
@@ -223,19 +231,24 @@ for (GIB in 1:MCAX) {
 			f[2,ff]=exp(f2-t(w2[,ff])%*%M%*%w2[,ff]/(2*tao[j])-(r2[ff])^2/(2*(sigma_r[j]^2))-f1_m)
 		}
 
-    
+ #       print(f)
+
 		Accept=sum(f[1,])/sum(f[2,])
     
 		u=runif(1)
     
 		if (u<=Accept) { #Accept: Update Gam, add 1 to acceptance rate
 			Gam[,j]=wstar
+            print(Accept)
+            print(wstar)
 			p_accept[j]=p_accept[j]+1
 		}
+ #       print(sum(wstar<0))
     
 		tao[j]=1/rgamma(1, shape=1+(kk-2)/2, rate=0.005+t(Gam[,j])%*%M%*%Gam[,j]/2)
-		#update tao
-    
+
+        #update tao
+    ## print(t(Gam[,j])%*%M%*%Gam[,j])
 		#burn-in
 		if (GIB>GNUM) {
 			GY[,GIB-GNUM,j]=t(Gam[,j])%*%BK[,,j]
@@ -246,6 +259,7 @@ for (GIB in 1:MCAX) {
     for(i in 1:2){
         gy[,i]<-t(Gam[,i])%*%Bk[,,i]
     }
+    # print(gy)
     
     #compare
     if (GIB>(MCAX-10)){
@@ -288,111 +302,126 @@ for (GIB in 1:MCAX) {
      
     b=b/2
     Sigma_A=1/rgamma(1,shape=a,rate=b);
+
     MCMC[GIB,1]=Sigma_A
 
 # update Sigma_C
 
     a=(n+18)/2; b=sum(Uc[,1]^2)/2+4
     Sigma_C=1/rgamma(1,shape=a,rate=b)
+
     MCMC[GIB,2]=Sigma_C
 
+# update Sigma_E
+
+    a=(2*n+18)/2; b=0
+    for (i in 1:n) {     #####改到这里
+    temp=gy[i,]-X[i,,]%*%Beta-Ua[i,]-Uc[i,]
+    b=b+sum(temp*temp)
+    }
+
+    b=b/2 +4
+    Sigma_E=1/rgamma(1,shape=a,rate=b);
+
+    MCMC[GIB,3]=Sigma_E
+
 # update beta
-#     Sigma_beta=matrix(0,nrow=p,ncol=p)
-#     Mu_beta=matrix(0,nrow=p,ncol=1)
-#     for (i in 1:n) {
-#         Sigma_beta=Sigma_beta+t(X[i,,])%*%X[i,,]
-#         Mu_beta=Mu_beta+t(X[i,,])%*%(gy[i,]-Ua[i,]-Uc[i,])
-#     }
-#     Sigma_beta=solve(Sigma_beta)*Sigma_E
-#     Mu_beta=Sigma_beta%*%Mu_beta/Sigma_E
-#     Beta=t(rmvnorm(1,Mu_beta,Sigma_beta))
-#     MCMC[GIB,3:4]=Beta
+    Sigma_beta=matrix(0,nrow=p,ncol=p)
+    Mu_beta=matrix(0,nrow=p,ncol=1)
+    for (i in 1:n) {
+        Sigma_beta=Sigma_beta+t(X[i,,])%*%X[i,,]
+        Mu_beta=Mu_beta+t(X[i,,])%*%(gy[i,]-Ua[i,]-Uc[i,])
+    }
+    Sigma_beta=solve(Sigma_beta)*Sigma_E
+    Mu_beta=Sigma_beta%*%Mu_beta/Sigma_E
+    Beta=t(rmvnorm(1,Mu_beta,Sigma_beta))
+    MCMC[GIB,4:5]=Beta
     
 }	
 
 
-#Acceptance rate	
-p_accept=p_accept/MCAX
-print(p_accept)
+# #Acceptance rate	
+# p_accept=p_accept/MCAX
+# print(p_accept)
 
-#Plots
-gy_1=rowMeans(GY[,,1])
-logy=log(y[1,])
+# #Plots
+# gy_1=rowMeans(GY[,,1])
+# logy=log(y[1,])
 
-plot(logy~y[1,],type="l",col="red",ylim=c(-5,8))
-points(gy_1~y[1,],type="l",lty=2)
+# plot(logy~y[1,],type="l",col="red",ylim=c(-5,8))
+# points(gy_1~y[1,],type="l",lty=2)
 
-#Plots
-gy_2=rowMeans(GY[,,2])
-logy2=log(y[2,])
+# #Plots
+# gy_2=rowMeans(GY[,,2])
+# logy2=log(y[2,])
 
-plot(logy2~y[2,],type="l",col="red",ylim=c(-5,8))
-points(gy_2~y[2,],type="l",lty=2)
+# plot(logy2~y[2,],type="l",col="red",ylim=c(-5,8))
+# points(gy_2~y[2,],type="l",lty=2)
 
 
 
-#beta
-BETA<-colMeans(MCMC[(GNUM+1):MCAX,])[3:4]
-print(BETA)
+# #beta
+# BETA<-colMeans(MCMC[(GNUM+1):MCAX,])[3:4]
+# print(BETA)
 
-#sigma_A
-sigma_a<-mean(MCMC[(GNUM+1):MCAX,1])
-print(sigma_a)
+# #sigma_A
+# sigma_a<-mean(MCMC[(GNUM+1):MCAX,1])
+# print(sigma_a)
 
-#sigma_C
-sigma_c<-mean(MCMC[(GNUM+1):MCAX,2])
-print(sigma_c)
+# #sigma_C
+# sigma_c<-mean(MCMC[(GNUM+1):MCAX,2])
+# print(sigma_c)
 
-##compare plot
-Ystar1<-matrix(0,nrow=n,ncol=p)
-for(i in 1:2){Ystar1[,i]<-sort(Ystar[,i])}
-Ystar_beta<-Ystar-y_beta
-Ystar_beta1<-matrix(0,nrow=n,ncol=p)
-for(i in 1:2){Ystar_beta1[,i]<-sort(Ystar_beta[,i])}
+# ##compare plot
+# Ystar1<-matrix(0,nrow=n,ncol=p)
+# for(i in 1:2){Ystar1[,i]<-sort(Ystar[,i])}
+# Ystar_beta<-Ystar-y_beta
+# Ystar_beta1<-matrix(0,nrow=n,ncol=p)
+# for(i in 1:2){Ystar_beta1[,i]<-sort(Ystar_beta[,i])}
 
-com_gy1=array(0,c(n,2,10))
-com_gy_beta1=array(0,c(n,2,10))
-for(j in 1:10){
-    for(i in 1:2){
-        com_gy1[,i,j]<-sort(com_gy[,i,j])
-        com_gy_beta1[,i,j]<-sort(com_gy_beta[,i,j])
-    }
-}
+# com_gy1=array(0,c(n,2,10))
+# com_gy_beta1=array(0,c(n,2,10))
+# for(j in 1:10){
+#     for(i in 1:2){
+#         com_gy1[,i,j]<-sort(com_gy[,i,j])
+#         com_gy_beta1[,i,j]<-sort(com_gy_beta[,i,j])
+#     }
+# }
 
-title_wd=c('1.png','2.png','3.png','4.png','5.png','6.png','7.png','8.png','9.png','10.png')
-title_name=c('1','2','3','4','5','6','7','8','9','10')
-##plot gy-Ystar for 1
-for(i in 1:10){
-#     png(file=title_wd[i], bg="transparent")
-    plot(com_gy1[,1,i]~Ystar1[,1],type="l",col="red")
-    abline(a = 0,b = 1)
-    title(title_name[i])
-#     dev.off()
-}
+# title_wd=c('1.png','2.png','3.png','4.png','5.png','6.png','7.png','8.png','9.png','10.png')
+# title_name=c('1','2','3','4','5','6','7','8','9','10')
+# ##plot gy-Ystar for 1
+# for(i in 1:10){
+# #     png(file=title_wd[i], bg="transparent")
+#     plot(com_gy1[,1,i]~Ystar1[,1],type="l",col="red")
+#     abline(a = 0,b = 1)
+#     title(title_name[i])
+# #     dev.off()
+# }
 
-##plot gy-Ystar for 2
-for(i in 1:10){
-#     png(file=title_wd[i], bg="transparent")
-    plot(com_gy1[,2,i]~Ystar1[,2],type="l",col="red")
-    abline(a = 0,b = 1)
-    title(title_name[i])
-#     dev.off()
-}
+# ##plot gy-Ystar for 2
+# for(i in 1:10){
+# #     png(file=title_wd[i], bg="transparent")
+#     plot(com_gy1[,2,i]~Ystar1[,2],type="l",col="red")
+#     abline(a = 0,b = 1)
+#     title(title_name[i])
+# #     dev.off()
+# }
 
-##plot gy-Ystar for 1 without beta
-for(i in 1:10){
-#     png(file=title_wd[i], bg="transparent")
-    plot(com_gy_beta1[,1,i]~Ystar_beta1[,1],type="l",col="red")
-    abline(a = 0,b = 1)
-    title(title_name[i])
-#     dev.off()
-}
+# ##plot gy-Ystar for 1 without beta
+# for(i in 1:10){
+# #     png(file=title_wd[i], bg="transparent")
+#     plot(com_gy_beta1[,1,i]~Ystar_beta1[,1],type="l",col="red")
+#     abline(a = 0,b = 1)
+#     title(title_name[i])
+# #     dev.off()
+# }
 
-##plot gy-Ystar for 2 without beta
-for(i in 1:10){
-#     png(file=title_wd[i], bg="transparent")
-    plot(com_gy_beta1[,2,i]~Ystar_beta1[,2],type="l",col="red")
-    abline(a = 0,b = 1)
-    title(title_name[i])
-#     dev.off()
-}
+# ##plot gy-Ystar for 2 without beta
+# for(i in 1:10){
+# #     png(file=title_wd[i], bg="transparent")
+#     plot(com_gy_beta1[,2,i]~Ystar_beta1[,2],type="l",col="red")
+#     abline(a = 0,b = 1)
+#     title(title_name[i])
+# #     dev.off()
+# }

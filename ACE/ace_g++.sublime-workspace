@@ -23,6 +23,22 @@
 	},
 	"buffers":
 	[
+		{
+			"contents": "",
+			"settings":
+			{
+				"buffer_size": 0,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "ace_g++.sublime-project",
+			"settings":
+			{
+				"buffer_size": 171,
+				"line_ending": "Unix"
+			}
+		}
 	],
 	"build_system": "Packages/User/gsl.sublime-build",
 	"build_system_choices":
@@ -88,24 +104,24 @@
 			],
 			[
 				"Packages/User/gsl.sublime-build",
-				""
+				"Run"
 			]
 		]
 	],
-	"build_varint": "",
+	"build_varint": "Run",
 	"command_palette":
 	{
-		"height": 104.0,
-		"last_filter": "remove",
+		"height": 150.0,
+		"last_filter": "install",
 		"selected_items":
 		[
 			[
-				"remove",
-				"Package Control: Remove Package"
-			],
-			[
 				"install",
 				"Package Control: Install Package"
+			],
+			[
+				"remove",
+				"Package Control: Remove Package"
 			],
 			[
 				"sublimeRepl",
@@ -173,7 +189,7 @@
 	],
 	"find":
 	{
-		"height": 39.0
+		"height": 31.0
 	},
 	"find_in_files":
 	{
@@ -212,23 +228,66 @@
 	"groups":
 	[
 		{
+			"selected": 1,
 			"sheets":
 			[
-			]
-		},
-		{
-			"sheets":
-			[
-			]
-		},
-		{
-			"sheets":
-			[
-			]
-		},
-		{
-			"sheets":
-			[
+				{
+					"buffer": 0,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 0,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"auto_name": "",
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "ace_g++.sublime-project",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 171,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								41,
+								41
+							]
+						],
+						"settings":
+						{
+							"auto_complete": true,
+							"syntax": "Packages/JavaScript/JSON.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
 			]
 		}
 	],
@@ -247,39 +306,18 @@
 			[
 				0,
 				0,
-				3,
+				1,
 				1
-			],
-			[
-				0,
-				1,
-				1,
-				2
-			],
-			[
-				1,
-				1,
-				2,
-				2
-			],
-			[
-				2,
-				1,
-				3,
-				2
 			]
 		],
 		"cols":
 		[
 			0.0,
-			0.33,
-			0.66,
 			1.0
 		],
 		"rows":
 		[
 			0.0,
-			0.75,
 			1.0
 		]
 	},
@@ -290,14 +328,14 @@
 	},
 	"output.exec":
 	{
-		"height": 164.0
+		"height": 257.0
 	},
 	"output.find_results":
 	{
 		"height": 0.0
 	},
 	"pinned_build_system": "",
-	"project": "ace_cpp_debug.sublime-project",
+	"project": "ace_g++.sublime-project",
 	"replace":
 	{
 		"height": 58.0
@@ -338,7 +376,7 @@
 	"show_open_files": true,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 181.0,
+	"side_bar_width": 262.0,
 	"status_bar_visible": true,
 	"template_settings":
 	{
